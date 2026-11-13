@@ -34,15 +34,20 @@ jobs:
       - name: Install PyYAML
         run: python3 -m pip install --user pyyaml
 
+      - name: Cache vendor downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vendor-cache
+          key: vendor-cache-${{ hashFiles('.github/workflows/vendor.yaml') }}
+          restore-keys: vendor-cache-
+
       - name: Rebuild vendor/ from vendor.yaml
         run: |
           set -euo pipefail
-          # Cache downloads between runs to avoid hammering npm.
           CACHE_DIR="${{ runner.temp }}/vendor-cache"
+          export CACHE_DIR
           mkdir -p "$CACHE_DIR"
 
-          # Read vendor.yaml and emit shell commands. Done via Python so the
-          # YAML structure isn't parsed with grep/awk.
           python3 - <<'PY' > /tmp/vendor_plan.sh
           import yaml, shlex, sys
 
@@ -54,6 +59,9 @@ jobs:
               print('echo "vendor.yaml has no entries" >&2; exit 1')
               sys.exit(0)
 
+          # $CACHE_DIR comes from the shell environment, set above.
+          print('mkdir -p "$CACHE_DIR"')
+
           for e in entries:
               name = e['name']
               version = e['version']
@@ -61,53 +69,46 @@ jobs:
               kind = e.get('type', 'tgz')
               strip = e.get('strip', '')
               into = e['into']
-              files = e.get('files') or []
+              files = e.get('files')
 
-              # Destination must be a real directory path (trailing slash ok)
               print(f'mkdir -p {shlex.quote(into)}')
 
-              # Download once per (name,version) into the cache.
               cache_key = f"{name}-{version}.{kind}"
-              print(f'CACHE_FILE="{ "$CACHE_DIR" }/{cache_key}"')
-              print(f'if [ ! -f "$CACHE_FILE" ]; then')
+              # NOTE: the closing brace and quote are adjacent — no space.
+              print(f'CACHE_FILE="$CACHE_DIR"/{cache_key}')
+
+              print('if [ ! -f "$CACHE_FILE" ]; then')
               print(f'  echo "downloading {url}"')
               print(f'  curl -fsSL {shlex.quote(url)} -o "$CACHE_FILE"')
-              print(f'fi')
+              print('fi')
 
-              # Extract into a scratch dir so `strip` can be applied cleanly.
-              print(f'SCRATCH=$(mktemp -d)')
+              print('SCRATCH=$(mktemp -d)')
               print(f'if [ {shlex.quote(kind)} = "zip" ]; then')
-              print(f'  unzip -q "$CACHE_FILE" -d "$SCRATCH"')
-              print(f'else')
-              print(f'  tar -xzf "$CACHE_FILE" -C "$SCRATCH"')
-              print(f'fi')
+              print('  unzip -q "$CACHE_FILE" -d "$SCRATCH"')
+              print('else')
+              print('  tar -xzf "$CACHE_FILE" -C "$SCRATCH"')
+              print('fi')
 
-              if strip:
-                  src = f'"$SCRATCH"/{strip}'
-              else:
-                  src = '"$SCRATCH"'
+              src = f'"$SCRATCH"/{strip}' if strip else '"$SCRATCH"'
 
-              if files:
-                  # Copy each explicitly named path from the stripped root.
+              if files is not None and len(files) > 0:
                   for f in files:
-                      # Trailing slash means "copy directory contents recursively"
                       if f.endswith('/'):
-                          src_path = f'{src}{f}'
-                          dst_path = f'{shlex.quote(into)}{f}'
-                          print(f'mkdir -p {shlex.quote(into)}')
-                          print(f'cp -R {src_path}* {shlex.quote(into)}{f}')
+                          # Directory entry: copy the *contents* of src/f into into/f
+                          print(f'cp -R {src}{f}* {shlex.quote(into)}{f}')
                       else:
                           print(f'cp {src}{f} {shlex.quote(into)}{f}')
               else:
+                  # No files list (or empty): copy everything under src
                   print(f'cp -R {src}* {shlex.quote(into)}')
 
-              print(f'rm -rf "$SCRATCH"')
+              print('rm -rf "$SCRATCH"')
           PY
 
           bash /tmp/vendor_plan.sh
 
           echo "--- vendor/ after rebuild ---"
-          find vendor -maxdepth 3 -type d | sort
+          find vendor -maxdepth 4 -type d | sort
           echo "--- sanity checks ---"
           test -f vendor/monaco/0.45.0/min/vs/loader.js
           test -f vendor/monaco/0.45.0/min/vs/base/worker/workerMain.js
@@ -122,7 +123,6 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.tag }}"
-          # Strip leading "v" — manifest versions are numeric.
           VERSION="${TAG#v}"
           python3 - <<PY
           import json
@@ -136,14 +136,13 @@ jobs:
           echo "manifest.json version -> ${VERSION}"
 
       - name: Package extension
+        id: package
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.tag }}"
           VERSION="${TAG#v}"
           ZIP_NAME="file-friendly-editor-${VERSION}.zip"
 
-          # Everything the extension needs at runtime. bootstrap.sh, README,
-          # LICENSE, and the source tarballs are not part of the runtime.
           zip -r "$ZIP_NAME" \
             manifest.json \
             background.js \
@@ -159,7 +158,6 @@ jobs:
 
           echo "Created $ZIP_NAME ($(du -h "$ZIP_NAME" | cut -f1))"
           echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
-        id: package
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -9,11 +9,11 @@
 #   strip:    path prefix to remove after extraction (tarballs nest under "package/")
 #   into:     destination directory under vendor/  (created if missing)
 #   files:    optional list of specific files to keep from the extracted tree.
-#             If omitted, the whole extracted tree is copied.
-#
-# Entries are applied in order. Later entries can overwrite earlier ones.
+#             - trailing "/" means "copy directory contents recursively"
+#             - omit the key entirely (or set to []) to copy everything under strip
 
 vendor:
+  # --- Monaco Editor ---------------------------------------------------
   - name: monaco-editor
     version: 0.45.0
     url: https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.45.0.tgz
@@ -31,6 +31,7 @@ vendor:
     files:
       - LICENSE
 
+  # --- js-beautify -----------------------------------------------------
   - name: js-beautify
     version: 1.15.1
     url: https://registry.npmjs.org/js-beautify/-/js-beautify-1.15.1.tgz
@@ -51,6 +52,7 @@ vendor:
     files:
       - LICENSE
 
+  # --- Terser ----------------------------------------------------------
   - name: terser
     version: 5.36.0
     url: https://registry.npmjs.org/terser/-/terser-5.36.0.tgz
@@ -69,6 +71,7 @@ vendor:
     files:
       - LICENSE
 
+  # --- mdn-data (reserved for CSS completion) --------------------------
   - name: mdn-data
     version: 2.3.0
     url: https://registry.npmjs.org/mdn-data/-/mdn-data-2.3.0.tgz
