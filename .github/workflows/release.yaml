@@ -59,7 +59,6 @@ jobs:
               print('echo "vendor.yaml has no entries" >&2; exit 1')
               sys.exit(0)
 
-          # $CACHE_DIR comes from the shell environment, set above.
           print('mkdir -p "$CACHE_DIR"')
 
           for e in entries:
@@ -74,7 +73,6 @@ jobs:
               print(f'mkdir -p {shlex.quote(into)}')
 
               cache_key = f"{name}-{version}.{kind}"
-              # NOTE: the closing brace and quote are adjacent — no space.
               print(f'CACHE_FILE="$CACHE_DIR"/{cache_key}')
 
               print('if [ ! -f "$CACHE_FILE" ]; then')
@@ -94,7 +92,8 @@ jobs:
               if files is not None and len(files) > 0:
                   for f in files:
                       if f.endswith('/'):
-                          # Directory entry: copy the *contents* of src/f into into/f
+                          # Directory entry: create dst subdir, then copy contents
+                          print(f'mkdir -p {shlex.quote(into)}{f}')
                           print(f'cp -R {src}{f}* {shlex.quote(into)}{f}')
                       else:
                           print(f'cp {src}{f} {shlex.quote(into)}{f}')
