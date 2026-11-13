@@ -38,7 +38,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/vendor-cache
-          key: vendor-cache-${{ hashFiles('.github/workflows/vendor.yaml') }}
+          key: vendor-cache-${{ hashFiles('vendor.yaml') }}
           restore-keys: vendor-cache-
 
       - name: Rebuild vendor/ from vendor.yaml
@@ -51,7 +51,7 @@ jobs:
           python3 - <<'PY' > /tmp/vendor_plan.sh
           import yaml, shlex, sys
 
-          with open('.github/workflows/vendor.yaml') as f:
+          with open('vendor.yaml') as f:
               data = yaml.safe_load(f)
 
           entries = data.get('vendor') or []
@@ -92,13 +92,11 @@ jobs:
               if files is not None and len(files) > 0:
                   for f in files:
                       if f.endswith('/'):
-                          # Directory entry: create dst subdir, then copy contents
                           print(f'mkdir -p {shlex.quote(into)}{f}')
                           print(f'cp -R {src}{f}* {shlex.quote(into)}{f}')
                       else:
                           print(f'cp {src}{f} {shlex.quote(into)}{f}')
               else:
-                  # No files list (or empty): copy everything under src
                   print(f'cp -R {src}* {shlex.quote(into)}')
 
               print('rm -rf "$SCRATCH"')
