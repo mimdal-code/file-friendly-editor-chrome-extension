@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>File Friendly Editor</title>
+  <style>
+    html, body { margin: 0; height: 100%; font: 13px system-ui; background: #1e1e1e; }
+    #toolbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; background: #252526; color: #ccc;
+      border-bottom: 1px solid #3c3c3c;
+    }
+    #toolbar button {
+      padding: 4px 10px; cursor: pointer;
+      background: #0e639c; color: #fff; border: 0; border-radius: 3px;
+      font: inherit;
+    }
+    #toolbar button:hover:not(:disabled) { background: #1177bb; }
+    #toolbar button:disabled { opacity: .4; cursor: default; }
+    #file-name { color: #d4d4d4; }
+    #file-name.dirty::after { content: ' ●'; color: #e2c08d; }
+    #file-path { color: #7a7a7a; font-size: 12px; }
+    #status { color: #888; margin-left: auto; }
+    #container { width: 100vw; height: calc(100vh - 35px); }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="btn-open">Open…</button>
+    <button id="btn-save" disabled>Save</button>
+    <button id="btn-beautify" disabled>Beautify</button>
+    <button id="btn-compress" disabled>Compress</button>
+    <span id="file-name">(no file)</span>
+    <span id="file-path"></span>
+    <span id="status"></span>
+  </div>
+  <div id="container"></div>
+  <script src="../core/monaco-env.js"></script>
+  <script src="../vendor/js-beautify/1.15.1/beautify.js"></script>
+  <script src="../vendor/js-beautify/1.15.1/beautify-css.js"></script>
+  <script src="../vendor/js-beautify/1.15.1/beautify-html.js"></script>
+  <script src="../vendor/terser/5.36.0/bundle.min.js"></script>
+  <script src="../vendor/monaco/0.45.0/min/vs/loader.js"></script>
+  <script src="editor.js"></script>
+  <script src="boot.js"></script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+{ "id": "md", "extensions": [".md", ".markdown"], "language": "markdown",
+  "completion": { "source": "snippets" } }

@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "File Friendly Editor",
+  "version": "0.1.0",
+  "description": "Highlight and edit JSON/YAML/TOML/CONF/MD/CSS/JS/SH with completion.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Open file editor"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "core/worker-proxy.js",
+        "vendor/monaco/0.45.0/min/vs/**"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

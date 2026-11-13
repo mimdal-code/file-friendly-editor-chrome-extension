@@ -1,0 +1,2 @@
+{ "id": "yaml", "extensions": [".yaml", ".yml"], "language": "yaml",
+  "completion": { "source": "snippets" } }

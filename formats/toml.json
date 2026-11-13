@@ -1,0 +1,2 @@
+{ "id": "toml", "extensions": [".toml"], "language": "ruby",
+  "completion": { "source": "inline", "property": [], "value": {} } }

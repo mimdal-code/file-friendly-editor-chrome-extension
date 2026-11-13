@@ -1,0 +1,23 @@
+# Source tarballs — vendor/ already contains the extracted files.
+# bootstrap.sh reads these; keep them locally, don't commit them.
+*.tgz
+
+vendor/
+# bootstrap.sh scratch directory
+.tmp/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*

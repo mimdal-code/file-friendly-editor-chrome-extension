@@ -1,0 +1,2 @@
+{ "id": "json", "extensions": [".json"], "language": "json",
+  "completion": { "source": "schema", "schema": "schemas/json.schema.json" } }

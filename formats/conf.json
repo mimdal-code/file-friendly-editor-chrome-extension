@@ -1,0 +1,2 @@
+{ "id": "conf", "extensions": [".conf", ".ini", ".cfg"], "language": "ini",
+  "completion": { "source": "inline", "property": [], "value": {} } }

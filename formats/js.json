@@ -1,0 +1,2 @@
+{ "id": "js", "extensions": [".js", ".mjs"], "language": "javascript",
+  "completion": { "source": "monaco-builtin" } }

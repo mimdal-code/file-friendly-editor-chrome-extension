@@ -1,0 +1,79 @@
+# Source of truth for third-party code vendored into this extension.
+# release.yaml reads this file, downloads each entry, and rebuilds vendor/.
+#
+# Each entry:
+#   name:     short identifier (used for the download cache key)
+#   version:  exact version — never use ranges here
+#   url:      direct download URL (npm tarball, GitHub release asset, etc.)
+#   type:     "tgz" (default) or "zip"
+#   strip:    path prefix to remove after extraction (tarballs nest under "package/")
+#   into:     destination directory under vendor/  (created if missing)
+#   files:    optional list of specific files to keep from the extracted tree.
+#             If omitted, the whole extracted tree is copied.
+#
+# Entries are applied in order. Later entries can overwrite earlier ones.
+
+vendor:
+  - name: monaco-editor
+    version: 0.45.0
+    url: https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.45.0.tgz
+    type: tgz
+    strip: package/min/vs/
+    into: vendor/monaco/0.45.0/min/vs/
+    files: []
+
+  - name: monaco-editor-license
+    version: 0.45.0
+    url: https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.45.0.tgz
+    type: tgz
+    strip: package/
+    into: vendor/monaco/0.45.0/
+    files:
+      - LICENSE
+
+  - name: js-beautify
+    version: 1.15.1
+    url: https://registry.npmjs.org/js-beautify/-/js-beautify-1.15.1.tgz
+    type: tgz
+    strip: package/js/lib/
+    into: vendor/js-beautify/1.15.1/
+    files:
+      - beautify.js
+      - beautify-css.js
+      - beautify-html.js
+
+  - name: js-beautify-license
+    version: 1.15.1
+    url: https://registry.npmjs.org/js-beautify/-/js-beautify-1.15.1.tgz
+    type: tgz
+    strip: package/
+    into: vendor/js-beautify/1.15.1/
+    files:
+      - LICENSE
+
+  - name: terser
+    version: 5.36.0
+    url: https://registry.npmjs.org/terser/-/terser-5.36.0.tgz
+    type: tgz
+    strip: package/dist/
+    into: vendor/terser/5.36.0/
+    files:
+      - bundle.min.js
+
+  - name: terser-license
+    version: 5.36.0
+    url: https://registry.npmjs.org/terser/-/terser-5.36.0.tgz
+    type: tgz
+    strip: package/
+    into: vendor/terser/5.36.0/
+    files:
+      - LICENSE
+
+  - name: mdn-data
+    version: 2.3.0
+    url: https://registry.npmjs.org/mdn-data/-/mdn-data-2.3.0.tgz
+    type: tgz
+    strip: package/
+    into: vendor/mdn-data/2.3.0/
+    files:
+      - css/

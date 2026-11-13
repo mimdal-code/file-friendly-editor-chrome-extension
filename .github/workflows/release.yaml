@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # needed to create the release and upload the asset
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building release for $TAG"
+
+      - name: Install PyYAML
+        run: python3 -m pip install --user pyyaml
+
+      - name: Rebuild vendor/ from vendor.yaml
+        run: |
+          set -euo pipefail
+          # Cache downloads between runs to avoid hammering npm.
+          CACHE_DIR="${{ runner.temp }}/vendor-cache"
+          mkdir -p "$CACHE_DIR"
+
+          # Read vendor.yaml and emit shell commands. Done via Python so the
+          # YAML structure isn't parsed with grep/awk.
+          python3 - <<'PY' > /tmp/vendor_plan.sh
+          import yaml, shlex, sys
+
+          with open('.github/workflows/vendor.yaml') as f:
+              data = yaml.safe_load(f)
+
+          entries = data.get('vendor') or []
+          if not entries:
+              print('echo "vendor.yaml has no entries" >&2; exit 1')
+              sys.exit(0)
+
+          for e in entries:
+              name = e['name']
+              version = e['version']
+              url = e['url']
+              kind = e.get('type', 'tgz')
+              strip = e.get('strip', '')
+              into = e['into']
+              files = e.get('files') or []
+
+              # Destination must be a real directory path (trailing slash ok)
+              print(f'mkdir -p {shlex.quote(into)}')
+
+              # Download once per (name,version) into the cache.
+              cache_key = f"{name}-{version}.{kind}"
+              print(f'CACHE_FILE="{ "$CACHE_DIR" }/{cache_key}"')
+              print(f'if [ ! -f "$CACHE_FILE" ]; then')
+              print(f'  echo "downloading {url}"')
+              print(f'  curl -fsSL {shlex.quote(url)} -o "$CACHE_FILE"')
+              print(f'fi')
+
+              # Extract into a scratch dir so `strip` can be applied cleanly.
+              print(f'SCRATCH=$(mktemp -d)')
+              print(f'if [ {shlex.quote(kind)} = "zip" ]; then')
+              print(f'  unzip -q "$CACHE_FILE" -d "$SCRATCH"')
+              print(f'else')
+              print(f'  tar -xzf "$CACHE_FILE" -C "$SCRATCH"')
+              print(f'fi')
+
+              if strip:
+                  src = f'"$SCRATCH"/{strip}'
+              else:
+                  src = '"$SCRATCH"'
+
+              if files:
+                  # Copy each explicitly named path from the stripped root.
+                  for f in files:
+                      # Trailing slash means "copy directory contents recursively"
+                      if f.endswith('/'):
+                          src_path = f'{src}{f}'
+                          dst_path = f'{shlex.quote(into)}{f}'
+                          print(f'mkdir -p {shlex.quote(into)}')
+                          print(f'cp -R {src_path}* {shlex.quote(into)}{f}')
+                      else:
+                          print(f'cp {src}{f} {shlex.quote(into)}{f}')
+              else:
+                  print(f'cp -R {src}* {shlex.quote(into)}')
+
+              print(f'rm -rf "$SCRATCH"')
+          PY
+
+          bash /tmp/vendor_plan.sh
+
+          echo "--- vendor/ after rebuild ---"
+          find vendor -maxdepth 3 -type d | sort
+          echo "--- sanity checks ---"
+          test -f vendor/monaco/0.45.0/min/vs/loader.js
+          test -f vendor/monaco/0.45.0/min/vs/base/worker/workerMain.js
+          test -f vendor/js-beautify/1.15.1/beautify.js
+          test -f vendor/js-beautify/1.15.1/beautify-css.js
+          test -f vendor/js-beautify/1.15.1/beautify-html.js
+          test -f vendor/terser/5.36.0/bundle.min.js
+          test -f vendor/mdn-data/2.3.0/css/properties.json
+          echo "vendor/ rebuild OK"
+
+      - name: Bump manifest version to match tag
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          # Strip leading "v" — manifest versions are numeric.
+          VERSION="${TAG#v}"
+          python3 - <<PY
+          import json
+          with open('manifest.json') as f:
+              m = json.load(f)
+          m['version'] = "${VERSION}"
+          with open('manifest.json', 'w') as f:
+              json.dump(m, f, indent=2)
+              f.write('\\n')
+          PY
+          echo "manifest.json version -> ${VERSION}"
+
+      - name: Package extension
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${TAG#v}"
+          ZIP_NAME="file-friendly-editor-${VERSION}.zip"
+
+          # Everything the extension needs at runtime. bootstrap.sh, README,
+          # LICENSE, and the source tarballs are not part of the runtime.
+          zip -r "$ZIP_NAME" \
+            manifest.json \
+            background.js \
+            popup/ \
+            editor/ \
+            core/ \
+            formats/ \
+            schemas/ \
+            vendor/ \
+            assets/ \
+            LICENSE \
+            -x '*.DS_Store' '*/.git/*' '*/node_modules/*'
+
+          echo "Created $ZIP_NAME ($(du -h "$ZIP_NAME" | cut -f1))"
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+        id: package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: ${{ steps.package.outputs.zip_name }}
+          fail_on_unmatched_files: true
